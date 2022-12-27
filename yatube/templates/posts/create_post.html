@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}
+  {% if is_edit %}
+    Редактировать запись
+  {% else %}
+    Новая запись
+  {% endif %}
+{% endblock %}
+{% block content %}
+  {% if request.resolver_match.view_name == 'posts:post_create' %}
+    {% include 'includes/form.html' with header='Новая запись' button='Добавить' %}
+  {% else %}
+    {% include 'includes/form.html' with header='Редактировать запись' button='Сохранить' %}
+  {% endif %}
+{% endblock %}
