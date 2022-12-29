@@ -6,11 +6,15 @@ from posts.models import User
 
 
 class UserViewTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        user = User.objects.create(username='user')
+        cls.auth_client = Client()
+        cls.auth_client.force_login(user)
 
     def setUp(self):
-        user = User.objects.create(username='user')
-        self.auth_client = Client()
-        self.auth_client.force_login(user)
+        self.auth_client = UserViewTest.auth_client
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""

@@ -9,30 +9,39 @@ from posts.models import User, Group, Post
 
 
 class PostViewTests(TestCase):
-
-    def setUp(self):
-        self.user = User.objects.create(username='user')
-        self.auth_client = Client()
-        self.auth_client.force_login(self.user)
-        self.empty_group = Group.objects.create(
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create(username='user')
+        cls.auth_client = Client()
+        cls.auth_client.force_login(cls.user)
+        cls.empty_group = Group.objects.create(
             title='Пустая',
             slug='empty',
             description='Без постов',
         )
-        self.main_group = Group.objects.create(
+        cls.main_group = Group.objects.create(
             title='Основная',
             slug='main',
             description='Для общих постов',
         )
-        self.post_without_group = Post.objects.create(
+        cls.post_without_group = Post.objects.create(
             text='Текст поста без группы',
-            author=self.user
+            author=cls.user
         )
-        self.post_with_group = Post.objects.create(
+        cls.post_with_group = Post.objects.create(
             text='Текст поста с группой',
-            group=self.main_group,
-            author=self.user
+            group=cls.main_group,
+            author=cls.user
         )
+
+    def setUp(self):
+        self.user = PostViewTests.user
+        self.auth_client = PostViewTests.auth_client
+        self.empty_group = PostViewTests.empty_group
+        self.main_group = PostViewTests.main_group
+        self.post_without_group = PostViewTests.post_without_group
+        self.post_with_group = PostViewTests.post_with_group
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""
@@ -147,21 +156,27 @@ class PostViewTests(TestCase):
 
 
 class PaginatorViewTest(TestCase):
-
-    def setUp(self):
-        self.user = User.objects.create(username='user')
-        self.group = Group.objects.create(
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create(username='user')
+        cls.group = Group.objects.create(
             title='Группа',
             slug='group',
             description='Для постов',
         )
-        self.posts_count_for_test = 13
-        for i in range(self.posts_count_for_test):
+        cls.posts_count_for_test = 13
+        for i in range(cls.posts_count_for_test):
             Post.objects.create(
                 text='Длинный текст поста ' + str(i),
-                group=self.group,
-                author=self.user,
+                group=cls.group,
+                author=cls.user,
             )
+
+    def setUp(self):
+        self.user = PaginatorViewTest.user
+        self.group = PaginatorViewTest.group
+        self.posts_count_for_test = PaginatorViewTest.posts_count_for_test
 
     def test_list_pages_check_records_count(self):
         """Кол-во постов в пагинации на каждой из страниц со списками."""

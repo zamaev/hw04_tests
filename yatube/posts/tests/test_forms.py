@@ -5,26 +5,34 @@ from posts.models import User, Group, Post
 
 
 class PostFormTest(TestCase):
-
-    def setUp(self):
-        self.user = User.objects.create(username='user')
-        self.auth_client = Client()
-        self.auth_client.force_login(self.user)
-        self.group = Group.objects.create(
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create(username='user')
+        cls.auth_client = Client()
+        cls.auth_client.force_login(cls.user)
+        cls.group = Group.objects.create(
             title='Группа',
             slug='group',
             description='Группа для постов',
         )
-        self.new_group = Group.objects.create(
+        cls.new_group = Group.objects.create(
             title='Новая группа',
             slug='new_group',
             description='Новая группа для постов',
         )
-        self.post = Post.objects.create(
+        cls.post = Post.objects.create(
             text='Текст поста',
-            group=self.group,
-            author=self.user
+            group=cls.group,
+            author=cls.user
         )
+
+    def setUp(self):
+        self.user = PostFormTest.user
+        self.auth_client = PostFormTest.auth_client
+        self.group = PostFormTest.group
+        self.new_group = PostFormTest.new_group
+        self.post = PostFormTest.post
 
     def test_create_post(self):
         """Валидная форма создает пост в Post."""
