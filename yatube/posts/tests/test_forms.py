@@ -5,54 +5,106 @@ from posts.models import User, Group, Post
 
 
 class PostFormTest(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create(username='user')
-        cls.group = Group.objects.create(
+
+    def setUp(self):
+        self.user = User.objects.create(username='user')
+        self.auth_client = Client()
+        self.auth_client.force_login(self.user)
+        self.group = Group.objects.create(
             title='Группа',
             slug='group',
             description='Группа для постов',
         )
-        Post.objects.create(
-            text='Текст поста',
-            group=cls.group,
-            author=cls.user
+        self.new_group = Group.objects.create(
+            title='Новая группа',
+            slug='new_group',
+            description='Новая группа для постов',
         )
-
-    def setUp(self):
-        self.auth_client = Client()
-        self.auth_client.force_login(PostFormTest.user)
+        self.post = Post.objects.create(
+            text='Текст поста',
+            group=self.group,
+            author=self.user
+        )
 
     def test_create_post(self):
         """Валидная форма создает пост в Post."""
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый пост',
-            'group': PostFormTest.group.pk,
+            'group': self.group.pk,
         }
         response = self.auth_client.post(
             reverse('posts:post_create'),
             data=form_data,
             follow=True,
         )
+        with self.subTest(value='posts_count'):
+            self.assertEqual(Post.objects.count(), posts_count + 1)
         self.assertRedirects(
             response,
-            reverse('posts:profile', kwargs={'username': 'user'})
+            reverse('posts:profile', args=(self.user.username,))
         )
-        self.assertEqual(Post.objects.count(), posts_count + 1)
-
-    def test_edit_post(self):
-        """Валидная форма создает изменяет в Post."""
-        post_id = 1
-        form_data = {
-            'text': 'Новый текст поста',
-            'group': PostFormTest.group.pk,
+        post = Post.objects.first()
+        fileds_for_check = {
+            post.text: form_data['text'],
+            post.group: self.group,
+            post.author: self.user,
         }
-        self.auth_client.post(
-            reverse('posts:post_edit', kwargs={'post_id': post_id}),
+        for field, expected in fileds_for_check.items():
+            with self.subTest(velue=post):
+                self.assertEqual(field, expected)
+
+    def test_guest_cannot_create_post(self):
+        posts_count = Post.objects.count()
+        form_data = {
+            'text': 'Тестовый пост',
+            'group': self.group.pk,
+        }
+        response = self.client.post(
+            reverse('posts:post_create'),
             data=form_data,
             follow=True,
         )
-        post = Post.objects.get(pk=post_id)
-        self.assertEqual(post.text, form_data['text'])
+        with self.subTest(value='posts_count'):
+            self.assertEqual(Post.objects.count(), posts_count)
+        self.assertRedirects(
+            response,
+            reverse('users:login') + '?next=' + reverse('posts:post_create',)
+        )
+
+    def test_edit_post(self):
+        """Валидная форма создает изменяет в Post."""
+        form_data = {
+            'text': 'Новый текст поста',
+            'group': self.new_group.pk,
+        }
+        self.auth_client.post(
+            reverse('posts:post_edit', args=(self.post.pk,)),
+            data=form_data,
+            follow=True,
+        )
+        post = Post.objects.get(pk=self.post.pk)
+        fileds_for_check = {
+            post.text: form_data['text'],
+            post.group: self.new_group,
+        }
+        for field, expected in fileds_for_check.items():
+            with self.subTest(velue=post):
+                self.assertEqual(field, expected)
+
+    def test_guest_cannot_edit_post(self):
+        """Неавторизованный пользователь не может редактировать пост."""
+        form_data = {
+            'text': 'Новый текст поста',
+            'group': self.new_group.pk,
+        }
+        response = self.client.post(
+            reverse('posts:post_edit', args=(self.post.pk,)),
+            data=form_data,
+            follow=True,
+        )
+        self.assertRedirects(
+            response,
+            reverse('users:login') + '?next=' + reverse('posts:post_edit',
+                                                        args=(self.post.pk,))
+        )

@@ -1,3 +1,6 @@
+from math import ceil
+
+from django.conf import settings
 from django.test import TestCase, Client
 from django.urls import reverse
 from django import forms
@@ -6,33 +9,30 @@ from posts.models import User, Group, Post
 
 
 class PostViewTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create(username='user')
-        Group.objects.create(
+
+    def setUp(self):
+        self.user = User.objects.create(username='user')
+        self.auth_client = Client()
+        self.auth_client.force_login(self.user)
+        self.empty_group = Group.objects.create(
             title='Пустая',
             slug='empty',
             description='Без постов',
         )
-        cls.main_group = Group.objects.create(
+        self.main_group = Group.objects.create(
             title='Основная',
             slug='main',
             description='Для общих постов',
         )
-        Post.objects.create(
+        self.post_without_group = Post.objects.create(
             text='Текст поста без группы',
-            author=cls.user
+            author=self.user
         )
-        Post.objects.create(
+        self.post_with_group = Post.objects.create(
             text='Текст поста с группой',
-            group=cls.main_group,
-            author=cls.user
+            group=self.main_group,
+            author=self.user
         )
-
-    def setUp(self):
-        self.auth_client = Client()
-        self.auth_client.force_login(PostViewTests.user)
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""
@@ -40,19 +40,19 @@ class PostViewTests(TestCase):
             reverse('posts:index'): 'posts/index.html',
             reverse(
                 'posts:group_list',
-                kwargs={'slug': 'main'}
+                args=(self.main_group.slug,)
             ): 'posts/group_list.html',
             reverse(
                 'posts:profile',
-                kwargs={'username': 'user'}
+                args=(self.user.username,)
             ): 'posts/profile.html',
             reverse(
                 'posts:post_detail',
-                kwargs={'post_id': 1}
+                args=(self.post_without_group.pk,)
             ): 'posts/post_detail.html',
             reverse(
                 'posts:post_edit',
-                kwargs={'post_id': 1}
+                args=(self.post_without_group.pk,)
             ): 'posts/create_post.html',
             reverse(
                 'posts:post_create',
@@ -65,47 +65,48 @@ class PostViewTests(TestCase):
 
     def test_list_pages_show_correct_context(self):
         """На всех страницах со списком постов отображается
-        необходимый поста.
+        необходимый пост.
         """
-        pages = {
+        urls = {
             reverse('posts:index'),
-            reverse('posts:group_list', kwargs={'slug': 'main'}),
-            reverse('posts:profile', kwargs={'username': 'user'}),
+            reverse('posts:group_list', args=(self.main_group.slug,)),
+            reverse('posts:profile', args=(self.user.username,)),
         }
-        for page in pages:
-            with self.subTest(value=page):
-                response = self.client.get(page)
-                first_object = response.context['page_obj'][0]
-                self.assertEqual(first_object.text, 'Текст поста с группой')
-                self.assertEqual(first_object.group, PostViewTests.main_group)
-                self.assertEqual(first_object.author, PostViewTests.user)
+        for url in urls:
+            with self.subTest(value=url):
+                response = self.client.get(url)
+                self.assertGreaterEqual(len(response.context['page_obj']), 1)
+                self.check_posts_are_same(
+                    response.context['page_obj'][0],
+                    self.post_with_group
+                )
 
     def test_empty_group_page_list_is_0(self):
         """На странице группы без добавления постов нет постов."""
         response = self.client.get(
-            reverse('posts:group_list', kwargs={'slug': 'empty'}))
+            reverse('posts:group_list', args=(self.empty_group.slug,)))
         self.assertEqual(len(response.context['page_obj']), 0)
 
     def test_profile_page_show_correct_context(self):
         """Шаблон страницы профиля сформирован с правильным конекстом."""
         response = self.client.get(
-            reverse('posts:profile', kwargs={'username': 'user'}))
-        self.assertEqual(response.context['author'].username, 'user')
+            reverse('posts:profile', args=(self.user.username,)))
+        self.assertEqual(response.context['author'], self.user)
 
     def test_post_detail_page_show_correct_context(self):
         """Шаблон страницы поста сформирован с правильным контекстом."""
         response = self.client.get(
-            reverse('posts:post_detail', kwargs={'post_id': 1}))
-        self.assertEqual(
-            response.context['post'].text,
-            'Текст поста без группы',
+            reverse('posts:post_detail', args=(self.post_without_group.pk,)))
+        self.check_posts_are_same(
+            response.context['post'],
+            self.post_without_group,
         )
 
     def test_post_pages_with_form_show_correct_context(self):
         """Страницы с формами сформированы с правильным контекстом."""
         pages = [
             reverse('posts:post_create'),
-            reverse('posts:post_edit', kwargs={'post_id': 1}),
+            reverse('posts:post_edit', args=(self.post_without_group.pk,)),
         ]
         for page in pages:
             response = self.auth_client.get(page)
@@ -115,47 +116,73 @@ class PostViewTests(TestCase):
             }
             for field, expected in form_fields.items():
                 with self.subTest(value=field):
-                    value = response.context['form'].fields[field]
-                    self.assertIsInstance(value, expected)
+                    self.assertIsInstance(
+                        response.context['form'].fields[field],
+                        expected
+                    )
 
     def test_post_edit_form_show_correct_context_instance(self):
         """Страница редактирования поста сформирована с правильным контекстом
         с нужным постом для редактирования.
         """
         response = self.auth_client.get(
-            reverse('posts:post_edit', kwargs={'post_id': 1}))
+            reverse('posts:post_edit', args=(self.post_without_group.pk,)))
         instance = response.context['form'].instance
         self.assertEqual(instance.text, 'Текст поста без группы')
-        self.assertEqual(instance.author, PostViewTests.user)
+        self.assertEqual(instance.author, self.user)
+
+    def check_posts_are_same(self, post1, post2):
+        fields_for_check = [
+            'text',
+            'pub_date',
+            'author',
+            'group',
+        ]
+        for field in fields_for_check:
+            with self.subTest(value=field):
+                self.assertEqual(
+                    getattr(post1, field),
+                    getattr(post2, field)
+                )
 
 
 class PaginatorViewTest(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        user = User.objects.create(username='user')
-        group = Group.objects.create(
+
+    def setUp(self):
+        self.user = User.objects.create(username='user')
+        self.group = Group.objects.create(
             title='Группа',
             slug='group',
             description='Для постов',
         )
-        for i in range(1, 14):
+        self.posts_count_for_test = 13
+        for i in range(self.posts_count_for_test):
             Post.objects.create(
                 text='Длинный текст поста ' + str(i),
-                group=group,
-                author=user
+                group=self.group,
+                author=self.user,
             )
 
     def test_list_pages_check_records_count(self):
         """Кол-во постов в пагинации на каждой из страниц со списками."""
-        pages = [
+        urls = [
             reverse('posts:index'),
-            reverse('posts:group_list', kwargs={'slug': 'group'}),
-            reverse('posts:profile', kwargs={'username': 'user'}),
+            reverse('posts:group_list', args=(self.group.slug,)),
+            reverse('posts:profile', args=(self.user.username,)),
         ]
-        for page in pages:
-            with self.subTest(value=page):
-                response = self.client.get(page)
-                self.assertEqual(len(response.context['page_obj']), 10)
-                response = self.client.get(page + '?page=2')
-                self.assertEqual(len(response.context['page_obj']), 3)
+        for url in urls:
+            with self.subTest(value=url):
+                pages = ceil(
+                    self.posts_count_for_test / settings.POSTS_PER_PAGE
+                )
+                for page in range(1, pages + 1):
+                    response = self.client.get(url, {'page': page})
+                    if page == pages:
+                        posts_count_on_page = (self.posts_count_for_test
+                                               % settings.POSTS_PER_PAGE)
+                    else:
+                        posts_count_on_page = settings.POSTS_PER_PAGE
+                    self.assertEqual(
+                        len(response.context['page_obj']),
+                        posts_count_on_page,
+                    )

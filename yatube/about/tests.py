@@ -5,11 +5,12 @@ from django.urls import reverse
 
 
 class AboutUrlTests(TestCase):
+
     def test_static_pages(self):
         """Страницы доступны любому пользователю."""
         urls = [
-            '/about/author/',
-            '/about/tech/',
+            reverse('about:author'),
+            reverse('about:tech'),
         ]
         for url in urls:
             with self.subTest(value=url):
@@ -19,8 +20,8 @@ class AboutUrlTests(TestCase):
     def test_urls_uses_correct_templates(self):
         """URL-адреса имеют соответствующий шаблон."""
         urls_template_names = {
-            '/about/author/': 'about/author.html',
-            '/about/tech/': 'about/tech.html',
+            reverse('about:author'): 'about/author.html',
+            reverse('about:tech'): 'about/tech.html',
         }
         for url, template in urls_template_names.items():
             with self.subTest(value=url):

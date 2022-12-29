@@ -1,41 +1,39 @@
 from http import HTTPStatus
 
 from django.test import TestCase, Client
+from django.urls import reverse
 
 from posts.models import User, Group, Post
 
 
 class PostUrlTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create(username='user')
-        cls.author = User.objects.create(username='author')
-        group = Group.objects.create(
+
+    def setUp(self):
+        self.guest_client = Client()
+        self.author = User.objects.create(username='author')
+        self.author_client = Client()
+        self.author_client.force_login(self.author)
+        self.user = User.objects.create(username='user')
+        self.user_client = Client()
+        self.user_client.force_login(self.user)
+        self.group = Group.objects.create(
             title='Основная',
             slug='main',
             description='Для общих постов',
         )
-        Post.objects.create(
+        self.post = Post.objects.create(
             text='Длинный текст поста',
-            author=cls.author,
-            group=group,
+            author=self.author,
+            group=self.group,
         )
 
-    def setUp(self):
-        self.guest_client = Client()
-        self.author_client = Client()
-        self.author_client.force_login(PostUrlTests.author)
-        self.user_client = Client()
-        self.user_client.force_login(PostUrlTests.user)
-
     def test_accessible_urls_for_guest(self):
-        """Основные просмотра доступны любому пользователю."""
+        """Основные страницы просмотра доступны любому пользователю."""
         accessible_urls = [
-            '/',
-            '/group/main/',
-            '/profile/author/',
-            '/posts/1/',
+            reverse('posts:index'),
+            reverse('posts:group_list', args=(self.group.slug,)),
+            reverse('posts:profile', args=(self.author.username,)),
+            reverse('posts:post_detail', args=(self.post.pk,)),
         ]
         for url in accessible_urls:
             with self.subTest(value=url):
@@ -47,22 +45,24 @@ class PostUrlTests(TestCase):
         перенаправляют неавторизованного пользователя.
         """
         inaccessible_urls = [
-            '/posts/1/edit/',
-            '/create/',
+            reverse('posts:post_edit', args=(self.post.pk,)),
+            reverse('posts:post_create'),
         ]
         for url in inaccessible_urls:
             with self.subTest(value=url):
                 response = self.guest_client.get(url)
                 self.assertRedirects(
-                    response, '/auth/login/?next=' + url)
+                    response,
+                    reverse('users:login') + '?next=' + url
+                )
 
     def test_accessible_urls_for_author(self):
         """Страницы редактирования и создания постов
         доступны авторизованному пользователю.
         """
         accessible_urls = [
-            '/posts/1/edit/',
-            '/create/',
+            reverse('posts:post_edit', args=(self.post.pk,)),
+            reverse('posts:post_create'),
         ]
         for url in accessible_urls:
             with self.subTest(value=url):
@@ -71,8 +71,12 @@ class PostUrlTests(TestCase):
 
     def test_inaccessible_urls_for_user(self):
         """Страница редактирования поста перенаправляют не автора поста."""
-        response = self.user_client.get('/posts/1/edit/')
-        self.assertRedirects(response, '/posts/1/')
+        response = self.user_client.get(
+            reverse('posts:post_edit', args=(self.post.pk,)))
+        self.assertRedirects(
+            response,
+            reverse('posts:post_detail', args=(self.post.pk,))
+        )
 
     def test_unexisting_page(self):
         """Несуществующая страница выдает ошибку 404."""
@@ -82,12 +86,24 @@ class PostUrlTests(TestCase):
     def test_urls_uses_correct_templates(self):
         """URL-адреса имеют соответствующий шаблон."""
         urls_template_names = {
-            '/': 'posts/index.html',
-            '/group/main/': 'posts/group_list.html',
-            '/profile/author/': 'posts/profile.html',
-            '/posts/1/': 'posts/post_detail.html',
-            '/posts/1/edit/': 'posts/create_post.html',
-            '/create/': 'posts/create_post.html',
+            reverse(
+                'posts:index'
+            ): 'posts/index.html',
+            reverse(
+                'posts:group_list', args=(self.group.slug,)
+            ): 'posts/group_list.html',
+            reverse(
+                'posts:profile', args=(self.author.username,)
+            ): 'posts/profile.html',
+            reverse(
+                'posts:post_detail', args=(self.post.pk,)
+            ): 'posts/post_detail.html',
+            reverse(
+                'posts:post_edit', args=(self.post.pk,)
+            ): 'posts/create_post.html',
+            reverse(
+                'posts:post_create'
+            ): 'posts/create_post.html',
         }
         for url, template in urls_template_names.items():
             with self.subTest(value=url):

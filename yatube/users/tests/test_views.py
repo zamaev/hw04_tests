@@ -6,6 +6,7 @@ from posts.models import User
 
 
 class UserViewTest(TestCase):
+
     def setUp(self):
         user = User.objects.create(username='user')
         self.auth_client = Client()
@@ -30,10 +31,7 @@ class UserViewTest(TestCase):
             ): 'users/password_reset_done.html',
             reverse(
                 'users:password_reset_confirm',
-                kwargs={
-                    'uidb64': 'uidb64',
-                    'token': 'token',
-                },
+                args=('uidb64', 'token'),
             ): 'users/password_reset_confirm.html',
             reverse(
                 'users:password_reset_complete',
