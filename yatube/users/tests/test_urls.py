@@ -11,12 +11,10 @@ class UserUrlTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create(username='user')
-        cls.auth_client = Client()
-        cls.auth_client.force_login(cls.user)
 
     def setUp(self):
-        self.user = UserUrlTest.user
-        self.auth_client = UserUrlTest.auth_client
+        self.auth_client = Client()
+        self.auth_client.force_login(self.user)
 
     def test_accessible_urls_guest(self):
         """Страницы доступны любому пользователю."""

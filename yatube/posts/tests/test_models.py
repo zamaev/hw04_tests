@@ -19,11 +19,6 @@ class PostModelTest(TestCase):
             group=cls.group,
         )
 
-    def setUp(self):
-        self.author = PostModelTest.author
-        self.group = PostModelTest.group
-        self.post = PostModelTest.post
-
     def test_models_have_correct_object_name(self):
         """В поле __str__ объекта post записано значение поля post.title."""
         objects_expected = {

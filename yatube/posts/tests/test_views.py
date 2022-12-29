@@ -13,8 +13,6 @@ class PostViewTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create(username='user')
-        cls.auth_client = Client()
-        cls.auth_client.force_login(cls.user)
         cls.empty_group = Group.objects.create(
             title='Пустая',
             slug='empty',
@@ -36,12 +34,8 @@ class PostViewTests(TestCase):
         )
 
     def setUp(self):
-        self.user = PostViewTests.user
-        self.auth_client = PostViewTests.auth_client
-        self.empty_group = PostViewTests.empty_group
-        self.main_group = PostViewTests.main_group
-        self.post_without_group = PostViewTests.post_without_group
-        self.post_with_group = PostViewTests.post_with_group
+        self.auth_client = Client()
+        self.auth_client.force_login(self.user)
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""
@@ -84,6 +78,7 @@ class PostViewTests(TestCase):
         for url in urls:
             with self.subTest(value=url):
                 response = self.client.get(url)
+                self.assertIn('page_obj', response.context)
                 self.assertGreaterEqual(len(response.context['page_obj']), 1)
                 self.check_posts_are_same(
                     response.context['page_obj'][0],
@@ -94,6 +89,7 @@ class PostViewTests(TestCase):
         """На странице группы без добавления постов нет постов."""
         response = self.client.get(
             reverse('posts:group_list', args=(self.empty_group.slug,)))
+        self.assertIn('page_obj', response.context)
         self.assertEqual(len(response.context['page_obj']), 0)
 
     def test_profile_page_show_correct_context(self):
@@ -137,8 +133,7 @@ class PostViewTests(TestCase):
         response = self.auth_client.get(
             reverse('posts:post_edit', args=(self.post_without_group.pk,)))
         instance = response.context['form'].instance
-        self.assertEqual(instance.text, 'Текст поста без группы')
-        self.assertEqual(instance.author, self.user)
+        self.check_posts_are_same(instance, self.post_without_group)
 
     def check_posts_are_same(self, post1, post2):
         fields_for_check = [
@@ -192,6 +187,7 @@ class PaginatorViewTest(TestCase):
                 )
                 for page in range(1, pages + 1):
                     response = self.client.get(url, {'page': page})
+                    self.assertIn('page_obj', response.context)
                     if page == pages:
                         posts_count_on_page = (self.posts_count_for_test
                                                % settings.POSTS_PER_PAGE)

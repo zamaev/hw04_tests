@@ -9,12 +9,11 @@ class UserViewTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        user = User.objects.create(username='user')
-        cls.auth_client = Client()
-        cls.auth_client.force_login(user)
+        cls.user = User.objects.create(username='user')
 
     def setUp(self):
-        self.auth_client = UserViewTest.auth_client
+        self.auth_client = Client()
+        self.auth_client.force_login(self.user)
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""

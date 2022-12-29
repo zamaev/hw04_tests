@@ -9,8 +9,6 @@ class PostFormTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create(username='user')
-        cls.auth_client = Client()
-        cls.auth_client.force_login(cls.user)
         cls.group = Group.objects.create(
             title='Группа',
             slug='group',
@@ -28,11 +26,8 @@ class PostFormTest(TestCase):
         )
 
     def setUp(self):
-        self.user = PostFormTest.user
-        self.auth_client = PostFormTest.auth_client
-        self.group = PostFormTest.group
-        self.new_group = PostFormTest.new_group
-        self.post = PostFormTest.post
+        self.auth_client = Client()
+        self.auth_client.force_login(self.user)
 
     def test_create_post(self):
         """Валидная форма создает пост в Post."""
@@ -55,7 +50,7 @@ class PostFormTest(TestCase):
         post = Post.objects.first()
         fileds_for_check = {
             post.text: form_data['text'],
-            post.group: self.group,
+            post.group.pk: form_data['group'],
             post.author: self.user,
         }
         for field, expected in fileds_for_check.items():
@@ -94,7 +89,8 @@ class PostFormTest(TestCase):
         post = Post.objects.get(pk=self.post.pk)
         fileds_for_check = {
             post.text: form_data['text'],
-            post.group: self.new_group,
+            post.group.pk: form_data['group'],
+            post.author: self.post.author,
         }
         for field, expected in fileds_for_check.items():
             with self.subTest(velue=post):
