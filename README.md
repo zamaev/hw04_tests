@@ -1,4 +1,7 @@
 # Социальная сеть любителей покодить
+
+[![Code style: djLint](https://img.shields.io/badge/html%20style-djLint-blue.svg)](https://github.com/Riverside-Healthcare/djlint)
+
 ### Описание
 Тут встречаются самые безумные идеи, разрыв шаблонов и релаксация мозга.
 ### Технологии
