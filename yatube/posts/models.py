@@ -53,6 +53,11 @@ class Post(models.Model):
         verbose_name='Группа',
         help_text='Группа, к которой будет относиться пост',
     )
+    image = models.ImageField(
+        verbose_name='Картинка',
+        upload_to='posts/',
+        blank=True,
+    )
 
     class Meta:
         verbose_name = 'Пост'
