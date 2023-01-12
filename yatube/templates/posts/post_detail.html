@@ -39,9 +39,9 @@
       </p>
       {% if request.user == post.author %}
         <a class="btn btn-primary" href="{% url 'posts:post_edit' post.id %}">
-          редактировать запись
+          Редактировать запись
         </a>
-      {% endif %} 
+      {% endif %}
     </article>
   </div>
 {% endblock %}
