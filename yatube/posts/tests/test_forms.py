@@ -172,4 +172,5 @@ class PostFormTest(TestCase):
             follow=True,
         )
         self.assertGreaterEqual(len(response.context['comments']), 1)
-        self.assertEqual(response.context['comments'][0].text, form_data['text'])
+        self.assertEqual(response.context['comments'][0].text,
+                         form_data['text'])
