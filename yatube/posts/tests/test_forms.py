@@ -85,7 +85,7 @@ class PostFormTest(TestCase):
         self.assertNotEqual(post.image.name, '')
 
     def test_guest_cannot_create_post(self):
-        """Гость не может создавать пост."""
+        """Неавторизованный пользователь не может создавать пост."""
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый пост',
@@ -140,3 +140,36 @@ class PostFormTest(TestCase):
             reverse('users:login') + '?next=' + reverse('posts:post_edit',
                                                         args=(self.post.pk,))
         )
+
+    def test_guest_cannot_create_comment(self):
+        """Неавторизованный пользователь не может создать комментарий."""
+        comments_count = self.post.comments.count()
+        form_data = {
+            'text': 'Новый комментарий',
+        }
+        response = self.client.post(
+            reverse('posts:add_comment', args=(self.post.pk,)),
+            data=form_data,
+            follow=True,
+        )
+        self.assertRedirects(
+            response,
+            reverse('users:login') + '?next=' + reverse('posts:add_comment',
+                                                        args=(self.post.pk,))
+        )
+        self.assertEqual(comments_count, self.post.comments.count())
+
+    def test_post_page_has_comment_context(self):
+        """После успешной отправки формы
+        комментарий появляется на странице поста.
+        """
+        form_data = {
+            'text': 'Новые комментарий',
+        }
+        response = self.auth_client.post(
+            reverse('posts:add_comment', args=(self.post.pk,)),
+            data=form_data,
+            follow=True,
+        )
+        self.assertGreaterEqual(len(response.context['comments']), 1)
+        self.assertEqual(response.context['comments'][0].text, form_data['text'])
