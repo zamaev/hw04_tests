@@ -1,11 +1,16 @@
+import shutil
+import tempfile
 from math import ceil
 
+from django import forms
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client
 from django.urls import reverse
-from django import forms
 
 from posts.models import User, Group, Post
+
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
 class PostViewTests(TestCase):
@@ -27,11 +32,30 @@ class PostViewTests(TestCase):
             text='Текст поста без группы',
             author=cls.user
         )
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif',
+        )
         cls.post_with_group = Post.objects.create(
             text='Текст поста с группой',
             group=cls.main_group,
-            author=cls.user
+            author=cls.user,
+            image=uploaded,
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.auth_client = Client()
@@ -70,11 +94,11 @@ class PostViewTests(TestCase):
         """На всех страницах со списком постов отображается
         необходимый пост.
         """
-        urls = {
+        urls = [
             reverse('posts:index'),
             reverse('posts:group_list', args=(self.main_group.slug,)),
             reverse('posts:profile', args=(self.user.username,)),
-        }
+        ]
         for url in urls:
             with self.subTest(value=url):
                 response = self.client.get(url)
@@ -134,6 +158,29 @@ class PostViewTests(TestCase):
             reverse('posts:post_edit', args=(self.post_without_group.pk,)))
         instance = response.context['form'].instance
         self.check_posts_are_same(instance, self.post_without_group)
+
+    def test_list_pages_post_image_in_context(self):
+        """Страницы со списком постов сформированы с правильным контекстом."""
+        urls = [
+            reverse('posts:index'),
+            reverse('posts:group_list', args=(self.main_group.slug,)),
+            reverse('posts:profile', args=(self.user.username,)),
+        ]
+        for url in urls:
+            with self.subTest(value=url):
+                response = self.client.get(url)
+                self.assertIn('page_obj', response.context)
+                self.assertGreaterEqual(len(response.context['page_obj']), 1)
+                self.assertEqual(self.post_with_group.image.name,
+                                 response.context['page_obj'][0].image.name)
+
+    def test_post_page_post_image_in_context(self):
+        """Страница поста имеет корректный контекст."""
+        response = self.client.get(
+            reverse('posts:post_detail', args=(self.post_with_group.pk,)))
+        self.assertIn('post', response.context)
+        self.assertEqual(self.post_with_group.image.name,
+                         response.context['post'].image.name)
 
     def check_posts_are_same(self, post1, post2):
         fields_for_check = [
