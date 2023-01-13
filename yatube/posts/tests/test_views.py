@@ -185,7 +185,7 @@ class PostViewTests(TestCase):
     def check_posts_are_same(self, post1, post2):
         fields_for_check = [
             'text',
-            'pub_date',
+            'created',
             'author',
             'group',
         ]
