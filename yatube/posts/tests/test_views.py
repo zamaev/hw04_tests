@@ -4,6 +4,7 @@ from math import ceil
 
 from django import forms
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client
 from django.urls import reverse
@@ -60,6 +61,19 @@ class PostViewTests(TestCase):
     def setUp(self):
         self.auth_client = Client()
         self.auth_client.force_login(self.user)
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_index_page_view_cache(self):
+        """Проверка кэширования на главной странице."""
+        response1 = self.client.get(reverse('posts:index'))
+        Post.objects.create(
+            text='test',
+            author=self.user,
+        )
+        response2 = self.client.get(reverse('posts:index'))
+        self.assertEqual(response1.content, response2.content)
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""

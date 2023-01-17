@@ -1,5 +1,6 @@
 from http import HTTPStatus
 
+from django.core.cache import cache
 from django.test import TestCase, Client
 from django.urls import reverse
 
@@ -38,6 +39,9 @@ class PostUrlTests(TestCase):
         self.author_client.force_login(self.author)
         self.user_client = Client()
         self.user_client.force_login(self.user)
+
+    def tearDown(self):
+        cache.clear()
 
     def test_accessible_urls_for_guest(self):
         """Основные страницы просмотра доступны любому пользователю."""

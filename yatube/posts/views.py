@@ -1,17 +1,20 @@
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormMixin, CreateView
 from django.views.generic import UpdateView
 from django.views.generic.list import ListView
+from django.views.decorators.cache import cache_page
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
-from django.conf import settings
+from django.utils.decorators import method_decorator
 
 from core.views import DetailListView
 from .forms import PostForm, CommentForm
 from .models import User, Group, Post
 
 
+@method_decorator(cache_page(20, key_prefix='index_page'), name='dispatch')
 class IndexView(ListView):
     model = Post
     template_name = 'posts/index.html'
