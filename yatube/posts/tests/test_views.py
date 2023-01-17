@@ -74,6 +74,9 @@ class PostViewTests(TestCase):
         )
         response2 = self.client.get(reverse('posts:index'))
         self.assertEqual(response1.content, response2.content)
+        cache.clear()
+        response3 = self.client.get(reverse('posts:index'))
+        self.assertNotEqual(response2.content, response3.content)
 
     def test_pages_uses_correct_templates(self):
         """URL адреса используют соответствующий шаблон."""
