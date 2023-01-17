@@ -49,7 +49,7 @@ class Post(CreatedModel):
         on_delete=models.SET_NULL,
         related_name='posts',
         verbose_name='Группа',
-        help_text='Группа, к которой будет относиться пост',
+        help_text='Группа поста',
     )
     image = models.ImageField(
         verbose_name='Картинка',
@@ -82,6 +82,7 @@ class Comment(CreatedModel):
     )
     text = models.TextField(
         verbose_name='Текст',
+        help_text='Текст нового комментария',
     )
 
     class Meta:

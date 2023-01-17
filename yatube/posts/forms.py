@@ -22,7 +22,7 @@ class PostForm(forms.ModelForm):
         }
         help_texts = {
             'text': 'Текст поста',
-            'group': 'Группа поста',
+            'group': 'Группа, к которой будет относиться пост',
         }
 
 
