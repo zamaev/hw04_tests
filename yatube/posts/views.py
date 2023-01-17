@@ -5,6 +5,7 @@ from django.views.generic import UpdateView
 from django.views.generic.list import ListView
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.conf import settings
 
 from core.views import DetailListView
 from .forms import PostForm, CommentForm
@@ -14,6 +15,7 @@ from .models import User, Group, Post
 class IndexView(ListView):
     model = Post
     template_name = 'posts/index.html'
+    paginate_by = settings.POSTS_PER_PAGE
 
 
 class GroupView(DetailListView):
@@ -28,7 +30,7 @@ class ProfileView(DetailListView):
     slug_url_kwarg = 'username'
     slug_field = 'username'
     general_object_model = User
-    general_object_context_name = 'profile'
+    general_object_context_name = 'author'
     relate_objects_name = 'posts'
 
 
