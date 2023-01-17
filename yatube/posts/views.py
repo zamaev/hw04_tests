@@ -1,94 +1,96 @@
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.views.generic.detail import DetailView
+from django.views.generic.edit import FormMixin, CreateView
+from django.views.generic import UpdateView
+from django.views.generic.list import ListView
+from django.http import HttpResponseRedirect
+from django.urls import reverse_lazy
 
-from core.utils import get_page_obj
-
+from core.views import DetailListView
 from .forms import PostForm, CommentForm
-from .models import Group, Post, User
+from .models import User, Group, Post
 
 
-def index(request):
-    page_obj = get_page_obj(request, Post.objects.all())
-
-    return render(request, 'posts/index.html', {
-        'page_obj': page_obj,
-    })
+class IndexView(ListView):
+    model = Post
+    template_name = 'posts/index.html'
 
 
-def group_posts(request, slug):
-    group = get_object_or_404(Group, slug=slug)
-    page_obj = get_page_obj(request, group.posts.all())
-
-    return render(request, 'posts/group_list.html', {
-        'group': group,
-        'page_obj': page_obj,
-    })
+class GroupView(DetailListView):
+    template_name = 'posts/group_list.html'
+    general_object_model = Group
+    general_object_context_name = 'group'
+    relate_objects_name = 'posts'
 
 
-def profile(request, username):
-    author = get_object_or_404(User, username=username)
-    page_obj = get_page_obj(request, author.posts.all())
-
-    return render(request, 'posts/profile.html', {
-        'author': author,
-        'page_obj': page_obj,
-    })
-
-
-def post_detail(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-
-    return render(request, 'posts/post_detail.html', {
-        'post': post,
-        'form': CommentForm(),
-        'comments': post.comments.all(),
-    })
+class ProfileView(DetailListView):
+    template_name = 'posts/profile.html'
+    slug_url_kwarg = 'username'
+    slug_field = 'username'
+    general_object_model = User
+    general_object_context_name = 'profile'
+    relate_objects_name = 'posts'
 
 
-@login_required
-def post_create(request):
-    form = PostForm(
-        request.POST or None,
-        files=request.FILES or None,
-    )
-    if form.is_valid():
-        post = form.save(commit=False)
-        post.author = request.user
-        post.save()
-        return redirect('posts:profile', username=request.user)
+class PostDetailView(FormMixin, DetailView):
+    form_class = CommentForm
+    model = Post
+    slug_url_kwarg = 'post_id'
+    slug_field = 'pk'
 
-    return render(request, 'posts/create_post.html', {
-        'form': form,
-    })
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['comments'] = self.get_object().comments.all()
+        return context
 
 
-@login_required
-def post_edit(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    if post.author != request.user:
-        return redirect('posts:post_detail', post_id=post_id)
+class PostCreateView(LoginRequiredMixin, CreateView):
+    template_name = 'posts/create_post.html'
+    model = Post
+    form_class = PostForm
 
-    form = PostForm(
-        request.POST or None,
-        files=request.FILES or None,
-        instance=post,
-    )
-    if form.is_valid():
-        form.save()
-        return redirect('posts:post_detail', post_id=post_id)
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
 
-    return render(request, 'posts/create_post.html', {
-        'form': form,
-    })
+    def get_success_url(self):
+        return reverse_lazy('posts:profile', args=(self.request.user,))
 
 
-@login_required
-def add_comment(request, post_id):
-    post = get_object_or_404(Post, pk=post_id)
-    form = CommentForm(request.POST or None)
-    if form.is_valid():
-        comment = form.save(commit=False)
-        comment.post = post
-        comment.author = request.user
-        comment.save()
-    return redirect('posts:post_detail', post_id=post_id)
+class PostEditView(LoginRequiredMixin, UpdateView):
+    template_name = 'posts/create_post.html'
+    model = Post
+    form_class = PostForm
+    pk_url_kwarg = 'post_id'
+
+    def get(self, request, *args, **kwargs):
+        if self.get_object().author != self.request.user:
+            return HttpResponseRedirect(
+                reverse_lazy(
+                    'posts:post_detail',
+                    args=(self.get_object().pk,)
+                )
+            )
+        return super().get(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse_lazy('posts:post_detail', args=(self.get_object().pk,))
+
+
+class AddCommentView(LoginRequiredMixin, CreateView):
+    model = Post
+    form_class = CommentForm
+    pk_url_kwarg = 'post_id'
+
+    def get(self, request, *args, **kwargs):
+        return HttpResponseRedirect(
+            self.get_success_url()
+        )
+
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        form.instance.post = self.get_object()
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('posts:post_detail', args=(self.get_object().pk,))
