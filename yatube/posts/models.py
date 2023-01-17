@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.urls import reverse_lazy
 
 from core.models import CreatedModel
 
@@ -56,6 +57,9 @@ class Post(CreatedModel):
         upload_to='posts/',
         blank=True,
     )
+
+    def get_absolute_url(self):
+        return reverse_lazy('posts:post_detail', args=(self.pk,))
 
     class Meta:
         verbose_name = 'Пост'

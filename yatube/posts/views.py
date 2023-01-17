@@ -3,7 +3,7 @@ from django.views.generic.detail import DetailView
 from django.views.generic.edit import FormMixin, CreateView
 from django.views.generic import UpdateView
 from django.views.generic.list import ListView
-from django.http import HttpResponseRedirect
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
 
 from core.views import DetailListView
@@ -65,12 +65,7 @@ class PostEditView(LoginRequiredMixin, UpdateView):
 
     def get(self, request, *args, **kwargs):
         if self.get_object().author != self.request.user:
-            return HttpResponseRedirect(
-                reverse_lazy(
-                    'posts:post_detail',
-                    args=(self.get_object().pk,)
-                )
-            )
+            return redirect(self.get_object())
         return super().get(request, *args, **kwargs)
 
     def get_success_url(self):
@@ -83,9 +78,7 @@ class AddCommentView(LoginRequiredMixin, CreateView):
     pk_url_kwarg = 'post_id'
 
     def get(self, request, *args, **kwargs):
-        return HttpResponseRedirect(
-            self.get_success_url()
-        )
+        return redirect(self.get_object())
 
     def form_valid(self, form):
         form.instance.author = self.request.user
