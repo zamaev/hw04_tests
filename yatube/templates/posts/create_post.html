@@ -1,15 +1,15 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}
   {% if is_edit %}
     Редактировать запись
   {% else %}
     Новая запись
   {% endif %}
-{% endblock %}
+{% endblock title %}
 {% block content %}
-  {% if request.resolver_match.view_name == 'posts:post_create' %}
-    {% include 'includes/form.html' with header='Новая запись' button='Добавить' for_image=True %}
+  {% if request.resolver_match.view_name == "posts:post_create" %}
+    {% include "includes/form.html" with header="Новая запись" button="Добавить" for_image=True %}
   {% else %}
-    {% include 'includes/form.html' with header='Редактировать запись' button='Сохранить' for_image=True %}
+    {% include "includes/form.html" with header="Редактировать запись" button="Сохранить" for_image=True %}
   {% endif %}
-{% endblock %}
+{% endblock content %}

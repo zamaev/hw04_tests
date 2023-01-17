@@ -1,11 +1,11 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}
   Последние обновления на сайте
-{% endblock %}
+{% endblock title %}
 {% block content %}
   <h1>Последние обновления на сайте</h1>
   {% for post in object_list %}
-    {% include 'posts/includes/post.html' with show_group_link=True show_author=True %}
+    {% include "posts/includes/post.html" with show_group_link=True show_author=True %}
   {% endfor %}
-  {% include 'posts/includes/paginator.html' %}
-{% endblock %}
+  {% include "posts/includes/paginator.html" %}
+{% endblock content %}
